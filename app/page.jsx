@@ -503,46 +503,52 @@ const App = () => {
 
   return (
     <div>
-      <div className="fixed flex top-5 translate-x-[120%] z-[100]  items-center gap-4 border bg-white p-4 rounded-full shadow-lg">
-          <div className="flex gap-3 border-r border-slate-600 pr-4">
-            <button 
-              onClick={undo}
-              className="px-3 py-1.5  text-black rounded-full border"
-            >
-              <Undo />
-            </button>
-            <button 
-              onClick={redo}
-              className="px-3 py-1.5  text-black rounded-full border"
-            >
-              <Redo />
-            </button>
-          </div>
-          <div className="flex gap-4">
-            {[
-              { id: "selection", label: "", icon: MousePointer2 },
-              { id: "line", label: "", icon: PencilLineIcon },
-              { id: "rectangle", label: "", icon: Square },
-              { id: "pencil", label: "", icon: Pencil },
-              { id: "text", label: "", icon: Type }
-            ].map(({ id, label, icon: Icon }) => (
-              <div key={id} className="flex items-center gap-2">
-                <button
-                  key={id}
-                  onClick={() => setTool(id)}
-                  className={`p-2 rounded-lg flex items-center gap-1 hover:bg-slate-200 transition-colors ${
-                    tool === id ? 'bg-slate-200' : 'bg-transparent'
-                  }`}
-                >
-                  <Icon 
-                    size={18}
-                    className={tool === id ? 'text-black' : 'text-slate-600'}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
+      <div className="fixed flex top-5 translate-x-[90%] z-[100] items-center gap-4 border bg-white p-4 rounded-full shadow-lg">
+        <div className="flex gap-3 border-r border-slate-600 pr-4">
+          <button 
+            onClick={undo}
+            className="px-3 py-1.5 text-black rounded-full border"
+          >
+            <Undo />
+          </button>
+          <button 
+            onClick={redo}
+            className="px-3 py-1.5 text-black rounded-full border"
+          >
+            <Redo />
+          </button>
+          <button 
+            onClick={() => setElements([])}
+            className="px-3 py-1.5 text-black rounded-full border bg-red-100 hover:bg-red-200"
+          >
+            Delete All
+          </button>
         </div>
+        <div className="flex gap-4">
+          {[
+            { id: "selection", label: "", icon: MousePointer2 },
+            { id: "line", label: "", icon: PencilLineIcon },
+            { id: "rectangle", label: "", icon: Square },
+            { id: "pencil", label: "", icon: Pencil },
+            { id: "text", label: "", icon: Type }
+          ].map(({ id, label, icon: Icon }) => (
+            <div key={id} className="flex items-center gap-2">
+              <button
+                key={id}
+                onClick={() => setTool(id)}
+                className={`p-2 rounded-lg flex items-center gap-1 hover:bg-slate-200 transition-colors ${
+                  tool === id ? 'bg-slate-200' : 'bg-transparent'
+                }`}
+              >
+                <Icon 
+                  size={18}
+                  className={tool === id ? 'text-black' : 'text-slate-600'}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
       {action === "writing" ? (
         <ScrollArea
           className="fixed z-20 bg-white border max-w-lg"
