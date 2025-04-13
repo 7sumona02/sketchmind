@@ -181,11 +181,48 @@ const drawElement = (roughCanvas, context, element) => {
       context.fillStyle = "black";
       context.textBaseline = "top";
       context.font = "24px sans-serif";
-      context.fillText(element.text, element.x1, element.y1);
+      const textLines = element.text.split('\n');
+      const lineHeight = 24;
+      textLines.forEach((line, index) => {
+        context.fillText(line, element.x1, element.y1 + index * lineHeight);
+      });
       break;
     default:
       throw new Error(`Type not recognised: ${element.type}`);
   }
+};
+
+const updateElement = (id, x1, y1, x2, y2, type, options) => {
+  const elementsCopy = [...elements];
+
+  switch (type) {
+    case "line":
+    case "rectangle":
+      elementsCopy[id] = createElement(id, x1, y1, x2, y2, type);
+      break;
+    case "pencil":
+      elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2 }];
+      break;
+    case "text":
+      const lines = options.text.split('\n');
+      const textWidth = Math.max(
+        ...lines.map(line => 
+          document.getElementById("canvas")
+            .getContext("2d")
+            .measureText(line).width
+        )
+      );
+      const textHeight = 24 * lines.length;
+      elementsCopy[id] = {
+        ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type),
+        text: options.text,
+      };
+      break;
+    default:
+      throw new Error(`Type not recognised: ${type}`);
+  }
+
+  setElements(elementsCopy, true);
 };
 
 const adjustmentRequired = type => ["line", "rectangle"].includes(type);
@@ -466,34 +503,7 @@ const App = () => {
 
   return (
     <div>
-      {/* <div style={{ position: "fixed", zIndex: 2 }}>
-        <input
-          type="radio"
-          id="selection"
-          checked={tool === "selection"}
-          onChange={() => setTool("selection")}
-        />
-        <label htmlFor="selection">Selection</label>
-        <input type="radio" id="line" checked={tool === "line"} onChange={() => setTool("line")} />
-        <label htmlFor="line">Line</label>
-        <input
-          type="radio"
-          id="rectangle"
-          checked={tool === "rectangle"}
-          onChange={() => setTool("rectangle")}
-        />
-        <label htmlFor="rectangle">Rectangle</label>
-        <input
-          type="radio"
-          id="pencil"
-          checked={tool === "pencil"}
-          onChange={() => setTool("pencil")}
-        />
-        <label htmlFor="pencil">Pencil</label>
-        <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
-        <label htmlFor="text">Text</label>
-      </div> */}
-      <div className="fixed flex top-5 translate-x-1/2 z-10  items-center gap-4 border p-4 rounded-full shadow-lg">
+      <div className="fixed flex top-5 translate-x-[120%] z-[100]  items-center gap-4 border bg-white p-4 rounded-full shadow-lg">
           <div className="flex gap-3 border-r border-slate-600 pr-4">
             <button 
               onClick={undo}
@@ -535,7 +545,7 @@ const App = () => {
         </div>
       {action === "writing" ? (
         <ScrollArea
-          className="fixed z-20"
+          className="fixed z-20 bg-white border max-w-lg"
           style={{
             top: selectedElement.y1 - 2 + panOffset.y,
             left: selectedElement.x1 + panOffset.x,
@@ -544,7 +554,24 @@ const App = () => {
           <textarea
             ref={textAreaRef}
             onBlur={handleBlur}
-            className="font-sans text-2xl text-black bg-transparent border-0 outline-none resize-auto overflow-hidden blackspace-pre min-w-[100px] min-h-[40px]"
+            onKeyUp={(e) => {
+              const textarea = e.target;
+              textarea.style.height = '0px';
+              textarea.style.height = textarea.scrollHeight + 'px';
+              
+              const context = document.getElementById("canvas").getContext("2d");
+              context.font = "24px sans-serif";
+              const lines = textarea.value.split('\n');
+              const maxWidth = Math.max(...lines.map(line => context.measureText(line).width));
+              textarea.style.width = Math.max(100, maxWidth + 40) + 'px';
+            }}
+            style={{
+              minWidth: '100px',
+              minHeight: '40px',
+              maxWidth: '500px',
+              maxHeight: '300px'
+            }}
+            className="font-sans text-2xl text-black bg-transparent border-0 outline-none resize-none overflow-y-auto whitespace-pre-wrap p-2"
           />
         </ScrollArea>
       ) : null}
