@@ -4,7 +4,7 @@ import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MousePointer2, Pencil, PencilLineIcon, Redo, Square, Type, Undo } from "lucide-react";
-
+import jsPDF from 'jspdf';
 
 const generator = rough.generator();
 
@@ -371,7 +371,10 @@ const App = () => {
   const handleMouseDown = event => {
     if (action === "writing") return;
 
-    const { clientX, clientY } = getMouseCoordinates(event);
+  // Add this line to prevent default behavior
+  if (tool === "text") event.preventDefault();
+
+  const { clientX, clientY } = getMouseCoordinates(event);
 
     if (event.button === 1 || pressedKeys.has(" ")) {
       setAction("panning");
@@ -486,10 +489,33 @@ const App = () => {
   };
 
   const handleBlur = event => {
+    if (!selectedElement) return;
+    
     const { id, x1, y1, type } = selectedElement;
+    const text = event.target.value;
+    
+    if (text.trim() === "") {
+      // Remove empty text elements
+      setElements(elements.filter(el => el.id !== id));
+    } else {
+      updateElement(id, x1, y1, null, null, type, { text });
+    }
+    
     setAction("none");
     setSelectedElement(null);
-    updateElement(id, x1, y1, null, null, type, { text: event.target.value });
+  };
+
+  const exportToPdf = () => {
+    const canvas = document.getElementById("canvas");
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "px",
+      format: [canvas.width, canvas.height]
+    });
+    
+    const imageData = canvas.toDataURL("image/png", 1.0);
+    pdf.addImage(imageData, "PNG", 0, 0, canvas.width, canvas.height);
+    pdf.save("sketchmind-diagram.pdf");
   };
 
   // Add this useEffect to handle window dimensions
@@ -513,7 +539,7 @@ const App = () => {
 
   return (
     <div>
-      <div className="fixed flex top-5 translate-x-[90%] z-[100] items-center gap-4 border bg-white p-4 rounded-full shadow-lg">
+      <div className="fixed flex top-5 translate-x-[64%] z-[100] items-center gap-4 border bg-white p-4 rounded-full shadow-lg">
         <div className="flex gap-3 border-r border-slate-600 pr-4">
           <button 
             onClick={undo}
@@ -538,7 +564,14 @@ const App = () => {
           >
             Delete All
           </button>
+          <button 
+            onClick={exportToPdf}
+            className="px-3 py-1.5 text-black rounded-full border bg-blue-100 hover:bg-blue-200"
+          >
+            Export PDF
+          </button>
         </div>
+        
         <div className="flex gap-4">
           {[
             { id: "selection", label: "", icon: MousePointer2 },
@@ -565,37 +598,41 @@ const App = () => {
         </div>
       </div>
       {action === "writing" ? (
-        <ScrollArea
-          className="fixed z-20 bg-white border max-w-lg"
-          style={{
-            top: selectedElement.y1 - 2 + panOffset.y,
-            left: selectedElement.x1 + panOffset.x,
-          }}
-        >
-          <textarea
-            ref={textAreaRef}
-            onBlur={handleBlur}
-            onKeyUp={(e) => {
-              const textarea = e.target;
-              textarea.style.height = '0px';
-              textarea.style.height = textarea.scrollHeight + 'px';
-              
-              const context = document.getElementById("canvas").getContext("2d");
-              context.font = "24px sans-serif";
-              const lines = textarea.value.split('\n');
-              const maxWidth = Math.max(...lines.map(line => context.measureText(line).width));
-              textarea.style.width = Math.max(100, maxWidth + 40) + 'px';
-            }}
-            style={{
-              minWidth: '100px',
-              minHeight: '40px',
-              maxWidth: '500px',
-              maxHeight: '300px'
-            }}
-            className="font-sans text-2xl text-black bg-transparent border-0 outline-none resize-none overflow-y-auto whitespace-pre-wrap p-2"
-          />
-        </ScrollArea>
-      ) : null}
+  <div
+    className="fixed z-20 bg-white border max-w-lg"
+    style={{
+      top: selectedElement.y1 + panOffset.y,
+      left: selectedElement.x1 + panOffset.x,
+      transform: 'translate(0, 0)'
+    }}
+  >
+    <textarea
+      ref={textAreaRef}
+      onBlur={handleBlur}
+      onKeyUp={(e) => {
+        const textarea = e.target;
+        textarea.style.height = '0px';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        const context = document.getElementById("canvas").getContext("2d");
+        context.font = "24px sans-serif";
+        const lines = textarea.value.split('\n');
+        const maxWidth = Math.max(...lines.map(line => context.measureText(line).width));
+        textarea.style.width = Math.max(100, maxWidth + 40) + 'px';
+      }}
+      style={{
+        minWidth: '100px',
+        minHeight: '40px',
+        maxWidth: '500px',
+        maxHeight: '300px',
+        // Add these styles
+        position: 'fixed',
+        overflow: 'hidden'
+      }}
+      className="font-sans text-2xl text-black bg-transparent border-0 outline-none resize-none whitespace-pre-wrap p-2"
+    />
+  </div>
+) : null}
       <canvas
         id="canvas"
         width={dimensions.width}
