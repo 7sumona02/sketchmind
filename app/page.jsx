@@ -129,7 +129,13 @@ const resizedCoordinates = (clientX, clientY, position, coordinates) => {
 
 const useHistory = initialState => {
   const [index, setIndex] = useState(0);
-  const [history, setHistory] = useState([initialState]);
+  const [history, setHistory] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sketchmind-elements');
+      return saved ? [JSON.parse(saved)] : [initialState];
+    }
+    return [initialState];
+  });
 
   const setState = (action, overwrite = false) => {
     const newState = typeof action === "function" ? action(history[index]) : action;
@@ -137,15 +143,36 @@ const useHistory = initialState => {
       const historyCopy = [...history];
       historyCopy[index] = newState;
       setHistory(historyCopy);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sketchmind-elements', JSON.stringify(newState));
+      }
     } else {
       const updatedState = [...history].slice(0, index + 1);
       setHistory([...updatedState, newState]);
       setIndex(prevState => prevState + 1);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sketchmind-elements', JSON.stringify(newState));
+      }
     }
   };
 
-  const undo = () => index > 0 && setIndex(prevState => prevState - 1);
-  const redo = () => index < history.length - 1 && setIndex(prevState => prevState + 1);
+  const undo = () => {
+    if (index > 0) {
+      setIndex(prevState => prevState - 1);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sketchmind-elements', JSON.stringify(history[index - 1]));
+      }
+    }
+  };
+
+  const redo = () => {
+    if (index < history.length - 1) {
+      setIndex(prevState => prevState + 1);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sketchmind-elements', JSON.stringify(history[index + 1]));
+      }
+    }
+  };
 
   return [history[index], setState, undo, redo];
 };
@@ -192,39 +219,6 @@ const drawElement = (roughCanvas, context, element) => {
   }
 };
 
-const updateElement = (id, x1, y1, x2, y2, type, options) => {
-  const elementsCopy = [...elements];
-
-  switch (type) {
-    case "line":
-    case "rectangle":
-      elementsCopy[id] = createElement(id, x1, y1, x2, y2, type);
-      break;
-    case "pencil":
-      elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2 }];
-      break;
-    case "text":
-      const lines = options.text.split('\n');
-      const textWidth = Math.max(
-        ...lines.map(line => 
-          document.getElementById("canvas")
-            .getContext("2d")
-            .measureText(line).width
-        )
-      );
-      const textHeight = 24 * lines.length;
-      elementsCopy[id] = {
-        ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type),
-        text: options.text,
-      };
-      break;
-    default:
-      throw new Error(`Type not recognised: ${type}`);
-  }
-
-  setElements(elementsCopy, true);
-};
-
 const adjustmentRequired = type => ["line", "rectangle"].includes(type);
 
 const usePressedKeys = () => {
@@ -265,8 +259,20 @@ const App = () => {
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
 
+  // Add this effect to handle initial load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sketchmind-elements');
+      if (saved) {
+        setElements(JSON.parse(saved));
+      }
+    }
+  }, []);
+
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
+    if (!canvas) return; // Add guard clause
+
     const context = canvas.getContext("2d");
     const roughCanvas = rough.canvas(canvas);
 
@@ -276,11 +282,11 @@ const App = () => {
     context.translate(panOffset.x, panOffset.y);
 
     elements.forEach(element => {
-      if (action === "writing" && selectedElement.id === element.id) return;
+      if (action === "writing" && selectedElement?.id === element.id) return;
       drawElement(roughCanvas, context, element);
     });
     context.restore();
-  }, [elements, action, selectedElement, panOffset]);
+  }, [elements, action, selectedElement, panOffset, dimensions]);
 
   useEffect(() => {
     const undoRedoFunction = event => {
@@ -335,11 +341,15 @@ const App = () => {
         elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2 }];
         break;
       case "text":
-        const textWidth = document
-          .getElementById("canvas")
-          .getContext("2d")
-          .measureText(options.text).width;
-        const textHeight = 24;
+        const lines = options.text.split('\n');
+        const textWidth = Math.max(
+          ...lines.map(line => 
+            document.getElementById("canvas")
+              .getContext("2d")
+              .measureText(line).width
+          )
+        );
+        const textHeight = 24 * lines.length;
         elementsCopy[id] = {
           ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type),
           text: options.text,
@@ -518,7 +528,12 @@ const App = () => {
             <Redo />
           </button>
           <button 
-            onClick={() => setElements([])}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('sketchmind-elements');
+              }
+              setElements([]);
+            }}
             className="px-3 py-1.5 text-black rounded-full border bg-red-100 hover:bg-red-200"
           >
             Delete All
