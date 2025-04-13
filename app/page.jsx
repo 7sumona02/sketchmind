@@ -3,6 +3,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MousePointer2, Pencil, PencilLineIcon, Redo, Square, Type, Undo } from "lucide-react";
 
 
 const generator = rough.generator();
@@ -464,7 +465,7 @@ const App = () => {
   }, []);
 
   return (
-    <div className="bg-slate-800">
+    <div>
       {/* <div style={{ position: "fixed", zIndex: 2 }}>
         <input
           type="radio"
@@ -492,42 +493,42 @@ const App = () => {
         <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
         <label htmlFor="text">Text</label>
       </div> */}
-      <div className="fixed top-5 left-5 z-10 flex items-center gap-4 bg-slate-800/80 p-4 rounded-lg shadow-lg backdrop-blur-sm">
+      <div className="fixed flex top-5 translate-x-1/2 z-10  items-center gap-4 border p-4 rounded-full shadow-lg">
           <div className="flex gap-3 border-r border-slate-600 pr-4">
             <button 
               onClick={undo}
-              className="px-3 py-1.5 bg-slate-700 text-black rounded hover:bg-slate-600 transition-colors"
+              className="px-3 py-1.5  text-black rounded-full border"
             >
-              Undo
+              <Undo />
             </button>
             <button 
               onClick={redo}
-              className="px-3 py-1.5 bg-slate-700 text-black rounded hover:bg-slate-600 transition-colors"
+              className="px-3 py-1.5  text-black rounded-full border"
             >
-              Redo
+              <Redo />
             </button>
           </div>
           <div className="flex gap-4">
             {[
-              { id: "selection", label: "Selection" },
-              { id: "line", label: "Line" },
-              { id: "rectangle", label: "Rectangle" },
-              { id: "pencil", label: "Pencil" },
-              { id: "text", label: "Text" }
-            ].map(({ id, label }) => (
+              { id: "selection", label: "", icon: MousePointer2 },
+              { id: "line", label: "", icon: PencilLineIcon },
+              { id: "rectangle", label: "", icon: Square },
+              { id: "pencil", label: "", icon: Pencil },
+              { id: "text", label: "", icon: Type }
+            ].map(({ id, label, icon: Icon }) => (
               <div key={id} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  id={id}
-                  checked={tool === id}
-                  onChange={() => setTool(id)}
-                  className="w-4 h-4 cursor-pointer accent-black"
-                />
-                <label 
-                  htmlFor={id}
-                  className="text-black cursor-pointer select-none hover:text-slate-300 transition-colors"
-                />
-                {label}
+                <button
+                  key={id}
+                  onClick={() => setTool(id)}
+                  className={`p-2 rounded-lg flex items-center gap-1 hover:bg-slate-200 transition-colors ${
+                    tool === id ? 'bg-slate-200' : 'bg-transparent'
+                  }`}
+                >
+                  <Icon 
+                    size={18}
+                    className={tool === id ? 'text-black' : 'text-slate-600'}
+                  />
+                </button>
               </div>
             ))}
           </div>
